@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import { Image, View, StyleSheet, Text, ToastAndroid } from 'react-native';
 import { Container, Content, Header, Left, Button, Icon, Body, Title } from 'native-base';
 import PosterModel from '../Model/PosterModel';
+import AccountKit from 'react-native-facebook-account-kit';
 
 export default class CheckoutScreen extends React.Component {
 
@@ -17,7 +18,57 @@ export default class CheckoutScreen extends React.Component {
     super(props);
     this.state = {
       poster: this.props.poster,
+      authToken: null,
+      loggedAccount: null
     };
+  }
+
+  componentWillMount() {
+    AccountKit.getCurrentAccessToken()
+      .then((token) => {
+        if (token) {
+          AccountKit.getCurrentAccount()
+          .then((account) => {
+            this.setState({
+              authToken: token,
+              loggedAccount: account
+            });
+            this.logUserPurchase();
+          });
+        } else {
+          console.log('No Account Logged In');
+        }
+      }).catch((e) => console.log('Access Token Request Failed', e));
+  }
+
+  loginWithEmail() {
+    AccountKit.loginWithEmail()
+      .then((token) => {
+        this.onLoginSuccess(token);
+      }).catch((e) => {
+        this.onLoginError(e);
+      });
+  }
+
+  onLoginSuccess(token) {
+    if(!token) {
+      console.warn('User canceled login');
+      this.setState({});
+    } else {
+      AccountKit.getCurrentAccount()
+        .then((account) => {
+          this.setState({
+            authToken: token,
+            loggedAccount: account
+          });
+          console.log('user already logged in, completing purchase');
+          this.logUserPurchase();
+        });
+    }
+  }
+
+  onLoginError(e) {
+    console.log('Failed to login', e);
   }
 
   render() {
@@ -63,7 +114,7 @@ export default class CheckoutScreen extends React.Component {
               rounded
               style={{ margin: 10 }}
               onPress={() => {
-                this.logUserPurchase();
+                this.loginWithEmail();
               }}
             >
               <Text style={[styles.btnText]}>Buy Now</Text>
